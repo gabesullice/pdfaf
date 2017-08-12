@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"io"
-	"os"
 
 	"github.com/mafredri/cdp"
 	"github.com/mafredri/cdp/devtool"
@@ -25,7 +24,7 @@ func URL(url string) OptionFunc {
 	}
 }
 
-func RequestToPDF(ops ...OptionFunc) {
+func RequestToPDF(ops ...OptionFunc) (io.Reader, error) {
 	opts := applyOptions(Options{}, ops...)
 
 	ctx := context.TODO()
@@ -36,14 +35,14 @@ func RequestToPDF(ops ...OptionFunc) {
 	if err != nil {
 		pt, err = devt.Create(ctx)
 		if err != nil {
-			panic(err) //return err
+			return nil, err
 		}
 	}
 
 	// Initiate a new RPC connection to the Chrome Debugging Protocol target.
 	conn, err := rpcc.DialContext(ctx, pt.WebSocketDebuggerURL)
 	if err != nil {
-		panic(err) //return err
+		return nil, err
 	}
 	defer conn.Close() // Leaving connections open will leak memory.
 
@@ -52,40 +51,34 @@ func RequestToPDF(ops ...OptionFunc) {
 	// Open a DOMContentEventFired client to buffer this event.
 	loaded, err := c.Page.LoadEventFired(ctx)
 	if err != nil {
-		panic(err) //return err
+		return nil, err
 	}
 	defer loaded.Close()
 
 	// Enable events on the Page domain, it's often preferrable to create
 	// event clients before enabling events so that we don't miss any.
 	if err = c.Page.Enable(ctx); err != nil {
-		panic(err) //return err
+		return err
 	}
 
 	navArgs := page.NewNavigateArgs(opts.URL)
 	if _, err = c.Page.Navigate(ctx, navArgs); err != nil {
-		panic(err) //return err
+		return nil, err
 	}
 
 	// Wait until we have a DOMContentEventFired event.
 	if _, err = loaded.Recv(); err != nil {
-		panic(err) //return err
+		return err
 	}
 
 	reply, err := c.Page.PrintToPDF(ctx, &page.PrintToPDFArgs{})
 	if err != nil {
-		panic(err) //return err
+		return nil, err
 	}
 
-	file, err := os.Create("./output.pdf")
-	defer file.Close()
-	if err != nil {
-		panic(err) //return err
-	}
+	r := bytes.NewReader(reply.Data)
 
-	if _, err = io.Copy(file, bytes.NewReader(reply.Data)); err != nil {
-		panic(err)
-	}
+	return r, nil
 }
 
 func applyOptions(o Options, ops ...OptionFunc) Options {
