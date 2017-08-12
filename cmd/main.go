@@ -1,13 +1,10 @@
 package main
 
 import (
-	"fmt"
-	"net/http"
+	"github.com/gabesullice/pdfaf/lib/core"
+	"os"
 )
 
 func main() {
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "hello world\n")
-	})
-	http.ListenAndServe(":8080", nil)
+	core.RequestToPDF(core.URL(os.Args[1]))
 }
