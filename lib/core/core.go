@@ -12,7 +12,22 @@ import (
 	"github.com/mafredri/cdp/rpcc"
 )
 
-func main() {
+type Options struct {
+	URL string
+}
+
+type OptionFunc func(Options) Options
+
+func URL(url string) OptionFunc {
+	return func(o Options) Options {
+		o.URL = url
+		return o
+	}
+}
+
+func RequestToPDF(ops ...OptionFunc) {
+	opts := applyOptions(Options{}, ops...)
+
 	ctx := context.TODO()
 
 	// Use the DevTools HTTP/JSON API to manage targets (e.g. pages, webworkers).
@@ -47,7 +62,7 @@ func main() {
 		panic(err) //return err
 	}
 
-	navArgs := page.NewNavigateArgs(os.Args[1])
+	navArgs := page.NewNavigateArgs(opts.URL)
 	if _, err = c.Page.Navigate(ctx, navArgs); err != nil {
 		panic(err) //return err
 	}
@@ -71,4 +86,11 @@ func main() {
 	if _, err = io.Copy(file, bytes.NewReader(reply.Data)); err != nil {
 		panic(err)
 	}
+}
+
+func applyOptions(o Options, ops ...OptionFunc) Options {
+	for _, op := range ops {
+		o = op(o)
+	}
+	return o
 }
