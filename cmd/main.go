@@ -11,24 +11,34 @@ import (
 	"github.com/gabesullice/pdfaf/lib/core"
 )
 
+type Options struct {
+	URL     string            `json:"url"`
+	Headers map[string]string `json:"headers"`
+}
+
 func main() {
-	runChrome(context.TODO())
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
-	file, err := os.Create("./output.pdf")
+	// Start a Chrome process
+	go func() { runChrome(ctx) }()
+
+	// Parse arguments to configure request
+	options := parseOptions()
+
+	// Sleep a little to ensure Chrome is started
+	//time.Sleep(500 * time.Millisecond)
+
+	// Initiate the request and get an io.Reader for the PDF
+	r := toPDFReader(ctx, options)
+
+	// Copy the PDF to a file
+	copyToFile(r, "./output.pdf")
+}
+
+func copyToFile(r io.Reader, filename string) {
+	file, err := os.Create(filename)
 	defer file.Close()
-	if err != nil {
-		panic(err)
-	}
-
-	headerMap := make(map[string]string)
-	if err := json.Unmarshal([]byte(os.Args[2]), &headerMap); err != nil {
-		panic(err)
-	}
-	r, err := core.RequestToPDF(
-		core.URL(os.Args[1]),
-		core.Headers(headerMap),
-	)
-
 	if err != nil {
 		panic(err)
 	}
@@ -38,12 +48,30 @@ func main() {
 	}
 }
 
+func parseOptions() (options Options) {
+	if err := json.Unmarshal([]byte(os.Args[1]), &options); err != nil {
+		panic(err)
+	}
+	return options
+}
+
+func toPDFReader(ctx context.Context, options Options) io.Reader {
+	r, err := core.ToPDF(
+		ctx,
+		core.URL(options.URL),
+		core.Headers(options.Headers),
+	)
+
+	if err != nil {
+		panic(err)
+	}
+
+	return r
+}
+
 func runChrome(ctx context.Context) {
-	go func() {
-		cmd := exec.CommandContext(ctx, "chromium", "--headless", "--remote-debugging-port=9222", "--disable-gpu")
-		if err := cmd.Run(); err != nil {
-			panic(err)
-		}
-	}()
-	time.Sleep(500 * time.Millisecond)
+	cmd := exec.CommandContext(ctx, "chromium", "--headless", "--remote-debugging-port=9222", "--disable-gpu")
+	if err := cmd.Run(); err != nil {
+		panic(err)
+	}
 }

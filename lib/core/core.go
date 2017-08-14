@@ -34,10 +34,8 @@ func Headers(headers map[string]string) OptionFunc {
 	}
 }
 
-func RequestToPDF(ops ...OptionFunc) (io.Reader, error) {
+func ToPDF(ctx context.Context, ops ...OptionFunc) (io.Reader, error) {
 	opts := applyOptions(Options{}, ops...)
-
-	ctx := context.TODO()
 
 	// Use the DevTools HTTP/JSON API to manage targets (e.g. pages, webworkers).
 	devt := devtool.New("http://127.0.0.1:9222")
