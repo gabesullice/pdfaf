@@ -1,5 +1,5 @@
 {
-  "body": "eyJ1cmwiOiJodHRwczovL2h0dHBiaW4ub3JnL2Nvb2tpZXMiLCJoZWFkZXJzIjp7IkNvb2tpZSI6ImZvbz1iYWlsZXkifX0K",
+  "body": "{\"url\":\"https://httpbin.org/cookies\",\"headers\":{\"Cookie\":\"foo=baz\"}}",
   "header": {
     "agent": "Go"
   },

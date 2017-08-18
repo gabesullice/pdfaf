@@ -1,2 +1,5 @@
 *.pdf
 *.so
+*.zip
+/chrome
+/function
