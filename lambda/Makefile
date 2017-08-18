@@ -30,6 +30,10 @@ PACKAGE ?= $(HANDLER)
 #GOPATH  ?= $(HOME)/go
 GOPATH  ?= $(GOPATH)
 
+zip: docker zip-chrome
+
+.PHONY: zip
+
 docker:
 	@docker run --rm                                                             \
 	  -e HANDLER=$(HANDLER)                                                      \
@@ -66,8 +70,11 @@ clean:
 
 .PHONY: clean
 
-chrome:
-	./download-chrome.sh
+headless-chrome:
+	wget -O chrome.tgz https://github.com/adieuadieu/serverless-chrome/raw/master/chrome/chrome-headless-lambda-linux-x64.tar.gz
+	tar -xvzf chrome.tgz
 
-pack-chrome:
-	@zip -ur $(PACKAGE).zip chrome/chrome-linux
+zip-chrome: headless-chrome
+	@zip -ur $(PACKAGE).zip headless-chrome
+
+.PHONY: zip-chrome

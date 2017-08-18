@@ -1,5 +1,7 @@
 *.pdf
 *.so
 *.zip
+*.tgz
+*.tar.gz
 /chrome
-/function
+/headless-chrome

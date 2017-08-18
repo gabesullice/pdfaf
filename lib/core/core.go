@@ -7,7 +7,6 @@ import (
 	"io"
 	"log"
 	"net"
-	"net/http"
 	"os"
 	"os/exec"
 
@@ -22,10 +21,8 @@ type Options struct {
 	URL        string
 	Headers    []byte
 	ChromePath string
-	//listener   *net.UnixListener
-	listener *net.TCPListener
-	client   *http.Client
-	bindAddr string
+	listener   *net.TCPListener
+	bindAddr   string
 }
 
 type OptionFunc func(Options) Options
@@ -59,33 +56,16 @@ func newTCPListener(addr string) (*net.TCPListener, error) {
 	return net.ListenTCP("tcp", res)
 }
 
-func newUnixListener(path string) (*net.UnixListener, error) {
-	addr, err := net.ResolveUnixAddr("unix", path)
-	if err != nil {
-		return nil, err
-	}
-	return net.ListenUnix("unix", addr)
-}
-
 func ToPDF(ctx context.Context, ops ...OptionFunc) (io.Reader, error) {
-	//l, err := newUnixListener("/tmp/pdfaf.sock")
 	l, err := newTCPListener("localhost:0")
 	if err != nil {
 		return nil, err
 	}
+
 	opts := applyOptions(Options{
 		ChromePath: "chromium",
-		//bindAddr:   "http://unix",
-		bindAddr: "http://" + l.Addr().String(),
-		listener: l,
-		client:   &http.Client{},
-		//client: &http.Client{
-		//	Transport: &http.Transport{
-		//		DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
-		//			return net.Dial("tcp", "localhost:9222")
-		//		},
-		//	},
-		//},
+		bindAddr:   "http://" + l.Addr().String(),
+		listener:   l,
 	}, ops...)
 
 	cmd, err := startChrome(ctx, opts)
@@ -95,17 +75,16 @@ func ToPDF(ctx context.Context, ops ...OptionFunc) (io.Reader, error) {
 	}
 
 	// Use the DevTools HTTP/JSON API to manage targets (e.g. pages, webworkers).
-	devt := devtool.New(opts.bindAddr, devtool.WithClient(opts.client))
-	log.Println("devtool.New")
+	devt := devtool.New(opts.bindAddr)
 	pt, err := devt.Get(ctx, devtool.Page)
-	log.Println("devtool.Get")
 	if err != nil {
 		pt, err = devt.Create(ctx)
 		if err != nil {
 			return nil, err
 		}
 	}
-	log.Println("Bound to " + opts.bindAddr)
+
+	log.Println("Connected to headleass chrome at " + opts.bindAddr)
 
 	// Initiate a new RPC connection to the Chrome Debugging Protocol target.
 	conn, err := rpcc.DialContext(ctx, pt.WebSocketDebuggerURL)
@@ -186,8 +165,8 @@ func startChrome(ctx context.Context, opts Options) (*exec.Cmd, error) {
 
 	cmd := exec.CommandContext(ctx, opts.ChromePath, args...)
 	cmd.ExtraFiles = []*os.File{file}
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	//cmd.Stdout = os.Stdout
+	//cmd.Stderr = os.Stderr
 	err = cmd.Start()
 	return cmd, err
 }
